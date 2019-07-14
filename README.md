@@ -18,7 +18,11 @@ To run the application in development mode:
 
 ## API
 
+To access the endpoints, please use the following `Http Header` pair:
+
+`Basic-Auth`: `personiosecureendpoint`
+
 ### Employees
 
 - GET `/employees`
-- POST `/employees` : _fields: `employees`
+- POST `/employees` : _fields: array of `employees`
