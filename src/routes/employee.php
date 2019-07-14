@@ -5,8 +5,8 @@ use Slim\Http\Response;
 
 $app->add(function (Request $req, Response $res, $next) {
     $headers = $req->getHeaders();
-    if(is_null($headers['HTTP_BASIC_AUTH'])) {
-        return respond($res)->error("You are not authorized to access this endpoint",403);
+    if (is_null($headers['HTTP_BASIC_AUTH'])) {
+        return respond($res)->error("You are not authorized to access this endpoint", 403);
     } elseif ($headers['HTTP_BASIC_AUTH'][0] != "personiosecureendpoint") {
         return respond($res)->error("Invalid auth credentials", 403);
     } else
@@ -87,16 +87,21 @@ function getEmployeesHierarchy($employeeName = null)
 {
     $db = new SQLite3(__DIR__ . '/../../db/employees.db', SQLITE3_OPEN_CREATE | SQLITE3_OPEN_READWRITE);
     if ($employeeName == null) {
-        $res = $db->query('SELECT "name" , "id" FROM "employees" WHERE "supervisor_id" IS NULL');
+        $employee = $db->query('SELECT "name" , "id" FROM "employees" WHERE "supervisor_id" IS NULL');
+        $employeeCount = $db->querySingle('SELECT COUNT("id") FROM "employees" WHERE "supervisor_id" IS NULL');
+        // There are no employees registered
+        if ($employeeCount == 0) {
+            return array();
+        }
+        $root = $employee->fetchArray(SQLITE3_ASSOC);
     } else {
-        $emp_id = $db->querySingle('SELECT "id" FROM "employees" WHERE "name" =  "' . $employeeName . '"');
-        if($emp_id != null) {
-            $res = $db->query('SELECT "name" , "id" FROM "employees" WHERE "supervisor_id" = '. $emp_id);
-        } else {
+        $query = $db->query('SELECT "id", "name" FROM "employees" WHERE "name" =  "' . $employeeName . '"');
+        $root = $query->fetchArray(SQLITE3_ASSOC);
+        if ($root == null) {
             return array();
         }
     }
-    $root = $res->fetchArray(SQLITE3_ASSOC);
+
     $supervisorEmployees = getSupervisorEmployees($root);
     $db->close();
     return array($root["name"] => $supervisorEmployees);
