@@ -3,6 +3,7 @@
 use Slim\Http\Request;
 use Slim\Http\Response;
 
+// Adding middleware for authentication
 $app->add(function (Request $req, Response $res, $next) {
     $headers = $req->getHeaders();
     if (is_null($headers['HTTP_BASIC_AUTH'])) {
@@ -57,9 +58,7 @@ function createEmployeeHierarchy($input)
 
     //If the supervisor doesn't exist, create it & return the ID.
     foreach ($input as $key => $value) {
-
         $sup_id = $db->querySingle('SELECT "id" FROM "employees" WHERE "name" = "' . $value . '"');
-
         if (is_null($sup_id) == 1) {
             $db->query('INSERT INTO "employees" ("name", "supervisor_id") VALUES ("' . $value . '", null)');
         }
@@ -91,6 +90,7 @@ function getEmployeesHierarchy($employeeName = null)
         $employeeCount = $db->querySingle('SELECT COUNT("id") FROM "employees" WHERE "supervisor_id" IS NULL');
         // There are no employees registered
         if ($employeeCount == 0) {
+            $db->close();
             return array();
         }
         $root = $employee->fetchArray(SQLITE3_ASSOC);
@@ -98,6 +98,7 @@ function getEmployeesHierarchy($employeeName = null)
         $query = $db->query('SELECT "id", "name" FROM "employees" WHERE "name" =  "' . $employeeName . '"');
         $root = $query->fetchArray(SQLITE3_ASSOC);
         if ($root == null) {
+            $db->close();
             return array();
         }
     }
