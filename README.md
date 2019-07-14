@@ -25,4 +25,5 @@ To access the endpoints, please use the following `Http Header` pair:
 ### Employees
 
 - GET `/employees`
+- GET `/employees/{name}`
 - POST `/employees` : _fields: array of `employees`

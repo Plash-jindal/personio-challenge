@@ -28,11 +28,22 @@ $app->post('/employee', function (Request $req, Response $res) {
     return respond($res)->ok($result);
 });
 
-// GET /employees
+// GET Hierarchy of all employees
 $app->get('/employee', function (Request $req, Response $res) {
 
     // Generating Response Hierarchy
     $result = getEmployeesHierarchy();
+
+    return respond($res)->ok($result);
+});
+
+// GET Hierarchy of a given employee
+$app->get('/employee/{name}', function (Request $req, Response $res, array $args) {
+
+    $employeeName = $args['name'];
+
+    // Generating Response Hierarchy
+    $result = getEmployeesHierarchy($employeeName);
 
     return respond($res)->ok($result);
 });
@@ -69,12 +80,22 @@ function createEmployeeHierarchy($input)
 }
 
 /**
+ * @param null $employeeName
  * @return array
  */
-function getEmployeesHierarchy()
+function getEmployeesHierarchy($employeeName = null)
 {
     $db = new SQLite3(__DIR__ . '/../../db/employees.db', SQLITE3_OPEN_CREATE | SQLITE3_OPEN_READWRITE);
-    $res = $db->query('SELECT "name" , "id" FROM "employees" WHERE "supervisor_id" IS NULL');
+    if ($employeeName == null) {
+        $res = $db->query('SELECT "name" , "id" FROM "employees" WHERE "supervisor_id" IS NULL');
+    } else {
+        $emp_id = $db->querySingle('SELECT "id" FROM "employees" WHERE "name" =  "' . $employeeName . '"');
+        if($emp_id != null) {
+            $res = $db->query('SELECT "name" , "id" FROM "employees" WHERE "supervisor_id" = '. $emp_id);
+        } else {
+            return array();
+        }
+    }
     $root = $res->fetchArray(SQLITE3_ASSOC);
     $supervisorEmployees = getSupervisorEmployees($root);
     $db->close();
