@@ -20,12 +20,15 @@ $app->post('/employee', function (Request $req, Response $res) {
     // Parsing the payload
     $data = $req->getParsedBody();
 
-    // Building and inserting the employee Hierarchy
-    createEmployeeHierarchy($data);
+    try {
+        // Building and inserting the employee Hierarchy
+        createEmployeeHierarchy($data);
 
-    // Generating Response Hierarchy
-    $result = getEmployeesHierarchy();
-
+        // Generating Response Hierarchy
+        $result = getEmployeesHierarchy();
+    } catch (Exception $e) {
+        return respond($res)->error($e->getMessage());
+    }
     return respond($res)->ok($result);
 });
 
@@ -86,26 +89,39 @@ function getEmployeesHierarchy($employeeName = null)
 {
     $db = new SQLite3(__DIR__ . '/../../db/employees.db', SQLITE3_OPEN_CREATE | SQLITE3_OPEN_READWRITE);
     if ($employeeName == null) {
-        $employee = $db->query('SELECT "name" , "id" FROM "employees" WHERE "supervisor_id" IS NULL');
-        $employeeCount = $db->querySingle('SELECT COUNT("id") FROM "employees" WHERE "supervisor_id" IS NULL');
+
+        $query = $db->query('SELECT "name" , "id" FROM "employees" WHERE "supervisor_id" IS NULL');
+        $employeeCount = $db->querySingle('SELECT COUNT("id") FROM "employees"');
+
         // There are no employees registered
         if ($employeeCount == 0) {
             $db->close();
-            return array();
+            throw new Exception("There are no employees present in the company");
+        } else {
+            $supervisorsCount = $db->querySingle('SELECT COUNT("id") FROM "employees" WHERE "supervisor_id" IS NULL');
+            // If there are multiple top level supervisors, throw an error
+            if($supervisorsCount > 1) {
+                // Flushing out the wrong inserted data (Can be done using transactions & rollback on errors but not using PDO)
+                $db->query('DELETE FROM "employees"');
+                $db->close();
+                throw new Exception("There are multiple roots present, please check your hierarchy for submission");
+            }
         }
-        $root = $employee->fetchArray(SQLITE3_ASSOC);
+        $root = $query->fetchArray(SQLITE3_ASSOC);
     } else {
         $query = $db->query('SELECT "id", "name" FROM "employees" WHERE "name" =  "' . $employeeName . '"');
         $root = $query->fetchArray(SQLITE3_ASSOC);
-        if ($root == null) {
+        if (empty($root)) {
             $db->close();
-            return array();
+            throw new Exception("There are no employees present in the company with the name:" .$employeeName);
         }
     }
 
+    // Fetching the employees
     $supervisorEmployees = getSupervisorEmployees($root);
+    $employeeHierarchy = array($root["name"] => $supervisorEmployees);
     $db->close();
-    return array($root["name"] => $supervisorEmployees);
+    return $employeeHierarchy;
 }
 
 /**
@@ -116,7 +132,7 @@ function getSupervisorEmployees($supervisor)
 {
     $db = new SQLite3(__DIR__ . '/../../db/employees.db', SQLITE3_OPEN_CREATE | SQLITE3_OPEN_READWRITE);
     $res = $db->query('SELECT "name", "id" FROM "employees" WHERE "supervisor_id" = ' . $supervisor['id']);
-    if (is_null($res)) {
+    if (empty($res)) {
         return;
     }
     $subEmployee = [];
