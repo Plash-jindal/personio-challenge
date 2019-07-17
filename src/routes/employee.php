@@ -92,7 +92,6 @@ function getEmployeesHierarchy($employeeName = null)
 
         $query = $db->query('SELECT "name" , "id" FROM "employees" WHERE "supervisor_id" IS NULL');
         $employeeCount = $db->querySingle('SELECT COUNT("id") FROM "employees"');
-
         // There are no employees registered
         if ($employeeCount == 0) {
             $db->close();
@@ -105,6 +104,14 @@ function getEmployeesHierarchy($employeeName = null)
                 $db->query('DELETE FROM "employees"');
                 $db->close();
                 throw new Exception("There are multiple roots present, please check your hierarchy for submission");
+            }
+
+            // If there are no supervisors present and looping issue is there in the payload data
+            if ($supervisorsCount == 0) {
+                // Flushing out the wrong inserted data (Can be done using transactions & rollback on errors but not using PDO)
+                $db->query('DELETE FROM "employees"');
+                $db->close();
+                throw new Exception("There is looping issue with the supervisors payload, please check your hierarchy for submission");
             }
         }
         $root = $query->fetchArray(SQLITE3_ASSOC);
