@@ -1,5 +1,6 @@
 {
     "name": "plash-jindal/personio-challenge",
+    "version": "1.0.1",
     "description": "An ever changing hierarchy Gmbh",
     "keywords": ["hierarchy", "rest", "router", "slim"],
     "license": "MIT",
